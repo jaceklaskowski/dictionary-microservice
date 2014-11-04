@@ -44,3 +44,18 @@ Use `curl` or any other REST client to talk to the service.
 * `curl -i -X POST http://127.0.0.1:8080/api/dict/rules/1 -H "Content-Type: application/json" -d '{"node":"NNN", "app":"AAA", "obj":"OOO", "mgr":"MMM"}'`
 * `curl -i -X DELETE http://127.0.0.1:8080/api/dict/rules/1`
 * `curl -i -X GET http://127.0.0.1:8080/api/dict/rules`
+
+## Deployment
+
+The project uses [sbt-assembly](https://github.com/sbt/sbt-assembly) plugin to *"create a fat JAR of your project with all of its dependencies."*
+
+Execute `sbt assembly` to assemble the application.
+
+Once completed, run the application with `java -jar target/scala-2.11/dictionary-spray-assembly-0.1-SNAPSHOT.jar`.
+
+    ➜  dictionary-spray git:(master) ✗ java -jar target/scala-2.11/dictionary-spray-assembly-0.1-SNAPSHOT.jar
+    host=localhost port=8080
+    >>> >>> receive called
+    [INFO] [11/04/2014 22:29:59.040] [default-akka.actor.default-dispatcher-2] [akka://default/user/IO-HTTP/listener-0] Bound to localhost/127.0.0.1:8080
+    [INFO] [11/04/2014 22:29:59.041] [default-akka.actor.default-dispatcher-4] [akka://default/deadLetters] Message [akka.io.Tcp$Bound] from Actor[akka://default/user/IO-HTTP/listener-0#943343147] to Actor[akka://default/deadLetters] was not delivered. [1] dead letters encountered. This logging can be turned off or adjusted with configuration settings 'akka.log-dead-letters' and 'akka.log-dead-letters-during-shutdown'.
+
