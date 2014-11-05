@@ -91,7 +91,7 @@ object Main extends App {
               }
             }
           } ~
-            post {
+            put {
               entity(as[Rule]) { rule =>
                 complete {
                   val r = rule.copy(id = Some(id))
@@ -111,7 +111,7 @@ object Main extends App {
         get {
           complete(rules.values)
         } ~
-        put {
+        post {
           entity(as[Rule]) { rule =>
             complete {
               val id = rules.keySet.max + 1
