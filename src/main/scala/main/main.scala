@@ -42,20 +42,22 @@ object Main extends App {
 
   implicit lazy val system = ActorSystem()
 
-  case class Rule(id: Option[Long], node: String = "*", app: String = "*", obj: String = "*", mgr: String = "*", kvs: Map[String, String] = Map())
+  case class Rule(id: Option[Long], node: String = "*", app: String = "*", obj: String = "*", mgr: String = "*", kvs: Map[String, String] = Map.empty)
 
   import spray.json.DefaultJsonProtocol
 
   object RuleJsonProtocol extends DefaultJsonProtocol {
     implicit object RuleFormat extends RootJsonFormat[Rule] {
-      def write(r: Rule) = JsObject(
-        "id" -> JsNumber(r.id.get),
-        "node" -> JsString(r.node),
-        "app" -> JsString(r.app),
-        "obj" -> JsString(r.obj),
-        "mgr" -> JsString(r.mgr),
-        "kvs" -> r.kvs.toJson
-      )
+      def write(r: Rule) = {
+        val fields = Map(
+          "id" -> JsNumber(r.id.get),
+          "node" -> JsString(r.node),
+          "app" -> JsString(r.app),
+          "obj" -> JsString(r.obj),
+          "mgr" -> JsString(r.mgr)
+        ) ++ r.kvs.map { case (k, v) => k -> JsString(v) }
+        JsObject(fields)
+      }
       def read(value: JsValue) = {
         val fs = value.asJsObject.fields
         val id = fs.get("id").map(_.convertTo[Long])
