@@ -1,44 +1,13 @@
 package main
 
 import akka.actor._
-import akka.event.LoggingReceive
-import akka.io.IO
-import spray.can.Http
-import spray.http.{MediaTypes, HttpEntity, StatusCode}
-import spray.http.StatusCodes._
-import spray.json
+import spray.http.MediaTypes
 import spray.json._
 import spray.routing._
-import spray.routing.Directives._
-import spray.util.LoggingContext
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
-import scala.util.control.NonFatal
 
-case class ErrorResponseException(responseStatus: StatusCode, response: Option[HttpEntity]) extends Exception
-
-class RoutedHttpService(route: Route) extends HttpServiceActor with ActorLogging {
-
-  override implicit def actorRefFactory = context
-
-  implicit val handler = ExceptionHandler {
-    case NonFatal(ErrorResponseException(statusCode, entity)) => ctx =>
-      ctx.complete(statusCode, entity)
-
-    case NonFatal(e) => ctx => {
-      log.error(e, InternalServerError.defaultMessage)
-      ctx.complete(InternalServerError)
-    }
-  }
-
-  def receive = LoggingReceive {
-    println(">>> >>> receive called")
-    runRoute(route)(handler, RejectionHandler.Default, context, RoutingSettings.default, LoggingContext.fromActorRefFactory)
-  }
-}
-
-object Main extends App {
+object Main extends App with SimpleRoutingApp {
 
   implicit lazy val system = ActorSystem()
 
@@ -47,6 +16,7 @@ object Main extends App {
   import spray.json.DefaultJsonProtocol
 
   object RuleJsonProtocol extends DefaultJsonProtocol {
+
     implicit object RuleFormat extends RootJsonFormat[Rule] {
       def write(r: Rule) = {
         val fields = Map(
@@ -55,9 +25,10 @@ object Main extends App {
           "app" -> JsString(r.app),
           "obj" -> JsString(r.obj),
           "mgr" -> JsString(r.mgr)
-        ) ++ r.kvs.map { case (k, v) => k -> JsString(v) }
+        ) ++ r.kvs.map { case (k, v) => k -> JsString(v)}
         JsObject(fields)
       }
+
       def read(value: JsValue) = {
         val fs = value.asJsObject.fields
         val id = fs.get("id").map(_.convertTo[Long])
@@ -65,12 +36,13 @@ object Main extends App {
         val app = fs("app").convertTo[String]
         val obj = fs("obj").convertTo[String]
         val mgr = fs("mgr").convertTo[String]
-        val kvs = fs.filterKeys { key => ! Set("id", "node", "app", "obj", "mgr").contains(key) }.map { case (k, v) =>
+        val kvs = fs.filterKeys { key => !Set("id", "node", "app", "obj", "mgr").contains(key)}.map { case (k, v) =>
           k -> v.convertTo[String]
         }
         Rule(id, node, app, obj, mgr, kvs)
       }
     }
+
   }
 
   val rules = mutable.HashMap(
@@ -81,7 +53,7 @@ object Main extends App {
   import RuleJsonProtocol._
   import spray.httpx.SprayJsonSupport._
 
-  val route =
+  val route: Route =
     rejectEmptyResponse {
       pathPrefix("api" / "dict" / "rules") {
         path(IntNumber) { id =>
@@ -110,28 +82,25 @@ object Main extends App {
               }
             }
         } ~
-        get {
-          complete(rules.values)
-        } ~
-        post {
-          entity(as[Rule]) { rule =>
-            complete {
-              val id = rules.keySet.max + 1
-              val r = rule.copy(id = Some(id))
-              println(s"PUT $id -> $r")
-              rules += id -> r
-              r
+          get {
+            complete(rules.values)
+          } ~
+          post {
+            entity(as[Rule]) { rule =>
+              complete {
+                val id = rules.keySet.max + 1
+                val r = rule.copy(id = Some(id))
+                println(s"PUT $id -> $r")
+                rules += id -> r
+                r
+              }
             }
           }
-        }
       }
     }
 
-  val rootService = system.actorOf(Props(new RoutedHttpService(route)))
-  val host = if (args.length == 1) args(0) else "localhost"
+  val interface = if (args.length == 1) args(0) else "localhost"
   val port = if (args.length == 2) args(1).toInt else 8080
-  println(s"host=$host port=$port")
-  IO(Http) ! Http.Bind(rootService, interface = host, port = port)
-
-  sys.addShutdownHook(system.shutdown())
+  println(s"interface=$interface port=$port")
+  startServer(interface, port)(route)
 }
