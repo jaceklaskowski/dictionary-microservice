@@ -48,7 +48,7 @@ object Main extends App with SimpleRoutingApp with RuleComponent {
         }
       } ~
       post {
-        parameters("node" ?, "count".as[Int]) { (node, count) =>
+        parameters("node".?, "count".as[Int]) { (node, count) =>
           complete(s"node=${node.getOrElse("")} count=$count")
         }
       }
