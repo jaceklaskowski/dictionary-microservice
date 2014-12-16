@@ -103,8 +103,9 @@ object Main extends App with SimpleRoutingApp with RuleComponent {
       }
     }
 
-  val interface = if (args.length == 1) args(0) else "localhost"
-  val port = if (args.length == 2) args(1).toInt else 8080
+  // Arguments beyond the two first are ignored.
+  val interface = if (args.length >= 1) args(0) else "localhost"
+  val port = if (args.length >= 2) args(1).toInt else 8080
   println(s"interface=$interface port=$port")
   startServer(interface, port)(route)
 
